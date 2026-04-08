@@ -1,0 +1,15 @@
+services:
+  mongodb-tuvi:
+    image: mongodb/mongodb-atlas-local:8.0
+    container_name: mongodb-tuvi
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_tuvi_data:/data/db
+    environment:
+      MONGODB_INITDB_ROOT_USERNAME: admin
+      MONGODB_INITDB_ROOT_PASSWORD: admin
+
+volumes:
+  mongodb_tuvi_data:
