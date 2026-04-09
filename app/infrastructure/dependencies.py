@@ -17,7 +17,7 @@ from app.config.settings import Settings, get_settings
 from app.domain.pipeline import RAGPipeline
 from app.infrastructure.database import DatabaseManager
 from app.services.document_loader import create_default_loader_registry
-from app.services.embedding import SentenceTransformerEmbeddingService
+from app.services.embedding import GeminiEmbeddingService
 from app.services.llm import ClaudeLLMService
 from app.services.ocr import ClaudeOCRService
 from app.services.vector_store import MongoVectorStore
@@ -60,11 +60,13 @@ def shutdown_database_manager() -> None:
 
 
 @lru_cache(maxsize=1)
-def get_embedding_service() -> SentenceTransformerEmbeddingService:
-    """Return a cached embedding service (lazy model loading)."""
+def get_embedding_service() -> GeminiEmbeddingService:
+    """Return a cached Gemini embedding service."""
     settings = get_settings()
-    return SentenceTransformerEmbeddingService(
+    return GeminiEmbeddingService(
         model_name=settings.EMBEDDING_MODEL,
+        google_api_key=settings.GOOGLE_API_KEY,
+        output_dimensionality=settings.EMBEDDING_DIMENSIONS,
     )
 
 
@@ -98,6 +100,7 @@ def get_vector_store() -> MongoVectorStore:
         collection=collection,
         index_name=settings.MONGODB_INDEX_NAME,
         embedding_model_name=settings.EMBEDDING_MODEL,
+        google_api_key=settings.GOOGLE_API_KEY,
     )
 
 

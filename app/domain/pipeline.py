@@ -13,6 +13,17 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
+# ── Sexagenary cycle (Can-Chi) for Vietnamese astrology ──────────────────────
+# Maps Gregorian year → Vietnamese (Can Chi) year name.
+_CAN = ["Canh", "Tân", "Nhâm", "Quý", "Giáp", "Ất", "Bính", "Đinh", "Mậu", "Kỷ"]
+_CHI = ["Thân", "Dậu", "Tuất", "Hợi", "Tý", "Sửu", "Dần", "Mão",
+        "Thìn", "Tỵ", "Ngọ", "Mùi"]
+
+
+def _can_chi(year: int) -> str:
+    """Return the Vietnamese can-chi year name for a given Gregorian year."""
+    return f"{_CAN[year % 10]} {_CHI[year % 12]}"
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.core.exceptions import (
@@ -32,12 +43,21 @@ _ASTROLOGER_SYSTEM_PROMPT = """\
 Bạn là một chuyên gia Tử Vi Đông Phương uyên thâm với hơn 30 năm kinh nghiệm \
 luận giải lá số. Bạn giải thích rõ ràng, chi tiết và dễ hiểu bằng tiếng Việt.
 
+NHIỆM VỤ DUY NHẤT: Luận giải VẬN HẠN NĂM {current_year} (năm {can_chi}) \
+cho người có lá số trong hình.
+
 Khi trả lời:
-- Dựa trên thông tin Tử Vi được trích xuất từ hình ảnh và kiến thức tham chiếu.
-- Phân tích các cung, sao, cục và ý nghĩa của chúng.
-- Đưa ra luận giải cụ thể, tránh chung chung.
-- Nếu hình ảnh không rõ hoặc thiếu thông tin, hãy nêu rõ phần nào không thể \
-  đọc được và vẫn cố gắng giải thích phần đọc được.
+- CHỈ tập trung vào vận hạn, dự đoán và lời khuyên cho năm {current_year} — \
+  không phân tích toàn bộ lá số, không luận mệnh chung chung.
+- Dựa trên thông tin Tử Vi trích xuất từ hình ảnh và tài liệu tham khảo.
+- Phân tích các cung/sao/hạn liên quan đến năm {current_year}: \
+  Tiểu hạn, Lưu niên, Lưu Lộc, Lưu Kỵ, Lưu Hóa và ảnh hưởng của chúng.
+- Nêu rõ các lĩnh vực: sự nghiệp, tài lộc, tình duyên, sức khỏe, gia đạo \
+  trong năm {current_year}.
+- Đưa ra lời khuyên cụ thể cho năm {current_year}: nên làm gì, tránh gì, \
+  tháng tốt/xấu nếu có thể xác định.
+- Nếu hình ảnh không rõ hoặc thiếu thông tin, hãy nêu rõ và vẫn cố gắng \
+  luận giải phần đọc được.
 - Trả lời hoàn toàn bằng tiếng Việt.\
 """
 
@@ -203,35 +223,46 @@ class RAGPipeline:
             return []
 
     def _generate_answer(self, raw_text: str, context_chunks: list[str]) -> str:
-        """Build the prompt and call the LLM to generate an interpretation."""
+        """Build the prompt and call the LLM to generate a year-specific interpretation."""
+        # Determine the current year and its can-chi name
+        current_year = datetime.now(tz=timezone.utc).year
+        year_can_chi = _can_chi(current_year)
+
+        # Format the system prompt with dynamic year info
+        system_prompt = _ASTROLOGER_SYSTEM_PROMPT.format(
+            current_year=current_year,
+            can_chi=year_can_chi,
+        )
+
         # Build context section
         context_section = ""
         if context_chunks:
             formatted = "\n\n---\n\n".join(
-                f"[Tai lieu tham khao {i + 1}]\n{chunk}"
+                f"[Tài liệu tham khảo {i + 1}]\n{chunk}"
                 for i, chunk in enumerate(context_chunks)
             )
             context_section = (
-                "## Kien thuc tham khao tu co so du lieu Tu Vi\n\n"
+                "## Kiến thức tham khảo từ cơ sở dữ liệu Tử Vi\n\n"
                 f"{formatted}\n\n"
             )
 
         # Build horoscope section
         horoscope_section = (
-            "## Thong tin tu la so (trich xuat tu hinh anh)\n\n"
-            f"{raw_text if raw_text else '[Khong trich xuat duoc noi dung tu hinh anh]'}"
+            "## Thông tin từ lá số (trích xuất từ hình ảnh)\n\n"
+            f"{raw_text if raw_text else '[Không trích xuất được nội dung từ hình ảnh]'}"
         )
 
         user_message = (
             f"{context_section}"
             f"{horoscope_section}\n\n"
             "---\n\n"
-            "Dua tren thong tin la so tren va kien thuc tham khao, "
-            "hay phan tich va luan giai la so Tu Vi nay mot cach chi tiet."
+            f"Dựa trên thông tin lá số trên và kiến thức tham khảo, "
+            f"hãy luận giải vận hạn năm {current_year} (năm {year_can_chi}) "
+            f"một cách chi tiết và cụ thể."
         )
 
         return self._llm.generate(
-            system_prompt=_ASTROLOGER_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_message=user_message,
             max_tokens=self._max_tokens,
         )

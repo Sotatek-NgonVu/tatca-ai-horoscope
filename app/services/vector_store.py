@@ -8,9 +8,10 @@ vector-embedded document chunks, backed by a shared MongoClient.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from pymongo.collection import Collection
 
@@ -22,20 +23,27 @@ logger = logging.getLogger(__name__)
 
 
 class MongoVectorStore(VectorStoreRepository):
-    """Vector store backed by MongoDB Atlas Vector Search + sentence-transformers."""
+    """Vector store backed by MongoDB Atlas Vector Search + Google Gemini embeddings."""
 
     def __init__(
         self,
         collection: Collection,
         index_name: str,
         embedding_model_name: str,
+        google_api_key: str | None = None,
     ) -> None:
         self._collection = collection
         self._index_name = index_name
-        # LangChain wrapper for sentence-transformers — reuses same model instance
-        self._langchain_embeddings = SentenceTransformerEmbeddings(
-            model_name=embedding_model_name
-        )
+        # LangChain wrapper for Google Gemini embeddings — free API, no local model
+        # output_dimensionality=768 uses Matryoshka truncation so vectors match the
+        # MongoDB Atlas index (created with numDimensions: 768).
+        kwargs: dict[str, Any] = {
+            "model": embedding_model_name,
+            "output_dimensionality": 768,
+        }
+        if google_api_key:
+            kwargs["google_api_key"] = google_api_key
+        self._langchain_embeddings = GoogleGenerativeAIEmbeddings(**kwargs)
 
     def _get_vector_search(self) -> MongoDBAtlasVectorSearch:
         """Build a MongoDBAtlasVectorSearch instance for querying."""
@@ -47,7 +55,10 @@ class MongoVectorStore(VectorStoreRepository):
 
     def add_documents(self, chunks: list[Chunk]) -> int:
         """
-        Embed chunks locally and store in MongoDB Atlas.
+        Embed chunks via Gemini API and store in MongoDB Atlas.
+
+        Chunks are embedded one at a time with a 1-second delay between each
+        call to stay within the Gemini free-tier rate limit (1 req/s).
 
         Returns:
             Number of chunks stored.
@@ -58,17 +69,19 @@ class MongoVectorStore(VectorStoreRepository):
         try:
             from langchain_core.documents import Document
 
-            langchain_docs = [
-                Document(page_content=c.content, metadata=c.metadata)
-                for c in chunks
-            ]
-
-            MongoDBAtlasVectorSearch.from_documents(
-                documents=langchain_docs,
-                embedding=self._langchain_embeddings,
-                collection=self._collection,
-                index_name=self._index_name,
-            )
+            for i, chunk in enumerate(chunks):
+                doc = Document(page_content=chunk.content, metadata=chunk.metadata)
+                MongoDBAtlasVectorSearch.from_documents(
+                    documents=[doc],
+                    embedding=self._langchain_embeddings,
+                    collection=self._collection,
+                    index_name=self._index_name,
+                )
+                logger.debug("Embedded and stored chunk %d/%d", i + 1, len(chunks))
+                # Rate-limit: 1 request per second to Gemini embedding API.
+                # Skip the sleep after the last chunk.
+                if i < len(chunks) - 1:
+                    time.sleep(1)
 
             logger.info("Stored %d chunk(s) in vector store", len(chunks))
             return len(chunks)

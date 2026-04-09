@@ -4,25 +4,26 @@ uvicorn[standard]==0.32.1
 python-multipart==0.0.20
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-pydantic-settings==2.7.1
+pydantic-settings>=2.10.1
 
 # ── LangChain Ecosystem ────────────────────────────────────────────────────────
-langchain==0.3.14
-langchain-community==0.3.14
-langchain-mongodb==0.3.0
+langchain>=1.2.15
+langchain-community>=0.4.1
+langchain-mongodb>=0.11.0
+langchain-google-genai>=4.2.1
 
-# ── Local Embeddings (no API key — runs 100% on your machine) ─────────────────
-# sentence-transformers downloads the model once (~500 MB) on first run,
-# then works fully offline.  Model used: paraphrase-multilingual-mpnet-base-v2
-# (768-dim, supports Vietnamese and 50+ languages).
-sentence-transformers==3.4.1
+# ── Embeddings (Google Gemini text-embedding-004) ────────────────────────────
+# Free tier: 1500 req/min, 768 dims, multilingual (Vietnamese + 100 languages).
+# Requires GOOGLE_API_KEY in .env (get one at https://aistudio.google.com/apikey).
+# No local model download needed — runs via API.
+google-genai>=1.70.0
 
 # ── Document Parsers ──────────────────────────────────────────────────────────
 pypdf==5.1.0
 docx2txt==0.8
 
 # ── Database ──────────────────────────────────────────────────────────────────
-pymongo==4.10.1
+pymongo>=4.16.0
 
 # ── Telegram Bot ──────────────────────────────────────────────────────────────
 python-telegram-bot==22.7

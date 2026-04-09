@@ -29,7 +29,7 @@ class ClaudeLLMService(LLMService):
         *,
         system_prompt: str,
         user_message: str,
-        max_tokens: int = 4096,
+        max_tokens: int = 16000,
     ) -> str:
         """
         Generate a response using Claude with adaptive thinking.

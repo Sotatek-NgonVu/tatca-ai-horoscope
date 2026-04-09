@@ -34,12 +34,15 @@ class Settings(BaseSettings):
     WEBHOOK_BASE_URL: str = ""
 
     # ── Claude Model ─────────────────────────────────────────────────────
-    CLAUDE_MODEL: str = "claude-opus-4-6"
+    CLAUDE_MODEL: str = "claude-haiku-4-5"
     CLAUDE_MAX_TOKENS: int = 4096
     CLAUDE_OCR_MAX_TOKENS: int = 2048
 
+    # ── Google Gemini (embeddings) ─────────────────────────────────────
+    GOOGLE_API_KEY: str = ""
+
     # ── Embedding Model ──────────────────────────────────────────────────
-    EMBEDDING_MODEL: str = "paraphrase-multilingual-mpnet-base-v2"
+    EMBEDDING_MODEL: str = "models/gemini-embedding-001"
     EMBEDDING_DIMENSIONS: int = 768
 
     # ── RAG Configuration ────────────────────────────────────────────────

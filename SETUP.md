@@ -42,8 +42,7 @@ pip install -r requirements.txt
 
 This installs all packages into `.venv/` only — your system Python is untouched.
 
-> The first install downloads the `paraphrase-multilingual-mpnet-base-v2` embedding model
-> (~500 MB) to `~/.cache/huggingface/`. This only happens once.
+> No large model downloads needed — embeddings use the Google Gemini API (free tier).
 
 ---
 
@@ -60,6 +59,7 @@ Fill in the **required** values:
 # Required
 ANTHROPIC_API_KEY=sk-ant-...       # From https://console.anthropic.com/settings/keys
 MONGODB_URI=mongodb://admin:admin@localhost:27018/?authSource=admin&directConnection=true   # Atlas-local container
+GOOGLE_API_KEY=your-google-key     # From https://aistudio.google.com/apikey (free)
 
 # Optional (bot won't start without these, but the API still works)
 TELEGRAM_BOT_TOKEN=123456:ABC-...  # From @BotFather on Telegram
@@ -68,9 +68,9 @@ WEBHOOK_BASE_URL=https://xxxx.ngrok.io   # See Step 5 below
 
 All other settings have sensible defaults. See `.env.example` for the full list.
 
-> **Note:** We use a **local Atlas-local MongoDB** container on port **27018** (not the standard 27017).
-> You can manage and inspect data with **MongoDB Compass** — connect to
-> `mongodb://admin:admin@localhost:27018/?authSource=admin`.
+> **Embeddings:** The app uses **Google Gemini `text-embedding-004`** — free tier (1,500 req/min),
+> 768 dimensions, multilingual (Vietnamese + 100 languages). No local model download needed.
+> Get a free API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 
 ---
 
@@ -327,7 +327,8 @@ See `ARCHITECTURE.md` for detailed design decisions and data flow diagrams.
 | Empty RAG context | No documents ingested yet — run Step 8 first |
 | ngrok URL changed | Update `WEBHOOK_BASE_URL` in `.env`, restart the server |
 | `(.venv)` missing from prompt | Run `source .venv/bin/activate` again |
-| Slow first startup | Normal — embedding model is being downloaded (~500 MB, once only) |
+| Slow first startup | Normal — first request initializes the Gemini embedding client |
+| `Google API key missing` | Set `GOOGLE_API_KEY` in `.env` — get one free at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | MongoDB connection refused | Make sure the container is running: `docker compose up -d` |
 | `SearchNotEnabled` error | You're using a plain `mongo` image — must use `mongodb/mongodb-atlas-local` (see Step 6) |
 | MongoDB index errors | Check `numDimensions` is **768** (not 1536) in your vector index |
