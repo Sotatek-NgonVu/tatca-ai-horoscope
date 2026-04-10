@@ -57,3 +57,15 @@ class LLMRateLimitError(LLMError):
 
 class OCRError(AppError):
     """Raised when OCR text extraction fails."""
+
+
+# ── Tu Vi Engine ─────────────────────────────────────────────────────────────
+
+class TuViEngineError(AppError):
+    """Raised when Tu Vi chart generation fails."""
+
+
+# ── Birth Data ───────────────────────────────────────────────────────────────
+
+class BirthDataMissingError(AppError):
+    """Raised when a user's birth data is not yet collected."""

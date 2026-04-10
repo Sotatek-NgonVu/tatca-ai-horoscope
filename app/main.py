@@ -23,20 +23,21 @@ from fastapi.responses import JSONResponse
 from app.config.settings import get_settings
 from app.core.exceptions import (
     AppError,
+    BirthDataMissingError,
     DocumentLoadError,
     UnsupportedDocumentTypeError,
 )
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
+    format="%(asctime)s  %(levelname)-8s  %(name)s --- %(message)s",
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Lifespan — startup / shutdown hooks
+#  Lifespan --- startup / shutdown hooks
 # ══════════════════════════════════════════════════════════════════════════════
 
 
@@ -48,7 +49,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     On startup:
       1. Validate configuration
       2. Connect to MongoDB
-      3. Register Telegram webhook (if configured)
+      3. Ensure required collections exist
+      4. Register Telegram webhook (if configured)
 
     On shutdown:
       1. Close MongoDB connection
@@ -64,9 +66,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # ── 1. Connect to MongoDB ────────────────────────────────────────────
     logger.info("Initializing database connection...")
-    init_database_manager(settings)
+    db_manager = init_database_manager(settings)
 
-    # ── 2. Register Telegram webhook ─────────────────────────────────────
+    # ── 2. Ensure required collections exist ─────────────────────────────
+    db = db_manager.get_database()
+    existing_collections = db.list_collection_names()
+    for col_name in ["chat_histories", "users", settings.MONGODB_COLLECTION_NAME]:
+        if col_name not in existing_collections:
+            db.create_collection(col_name)
+            logger.info("Created collection: %s", col_name)
+
+    # Ensure indexes on chat_histories for efficient queries
+    chat_col = db["chat_histories"]
+    chat_col.create_index([("user_id", 1), ("created_at", -1)])
+    logger.info("Ensured index on chat_histories(user_id, created_at)")
+
+    # Ensure index on users
+    users_col = db["users"]
+    users_col.create_index("user_id", unique=True)
+    logger.info("Ensured unique index on users(user_id)")
+
+    # ── 3. Register Telegram webhook ─────────────────────────────────────
     if settings.TELEGRAM_BOT_TOKEN and settings.WEBHOOK_BASE_URL:
         telegram_client = TelegramClient(settings.TELEGRAM_BOT_TOKEN)
         set_telegram_client(telegram_client)
@@ -80,7 +100,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if not settings.WEBHOOK_BASE_URL:
             missing.append("WEBHOOK_BASE_URL")
         logger.warning(
-            "Telegram webhook NOT registered — missing: %s",
+            "Telegram webhook NOT registered --- missing: %s",
             ", ".join(missing),
         )
 
@@ -99,14 +119,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     application = FastAPI(
-        title="Tu Vi RAG — AI Chatbot",
+        title="Tu Vi RAG Chatbot v3.0",
         description=(
-            "Upload PDF, DOCX, or image files to be parsed, chunked, embedded "
-            "locally with sentence-transformers, and stored in MongoDB Atlas "
-            "Vector Search.\n\n"
-            "A Telegram bot at `/telegram/webhook` accepts horoscope images, "
-            "extracts text via Claude Vision, retrieves knowledge context, "
-            "and returns a Vietnamese Tu Vi interpretation."
+            "Vietnamese astrology (Tu Vi) AI chatbot powered by Claude, "
+            "with hybrid memory (short-term + long-term vector search), "
+            "backed by MongoDB Atlas.\n\n"
+            "Telegram bot at `/telegram/webhook` accepts text messages "
+            "and horoscope images."
         ),
         version="3.0.0",
         lifespan=lifespan,
@@ -122,6 +141,16 @@ def create_app() -> FastAPI:
     application.include_router(telegram_router)
 
     # ── Exception handlers ───────────────────────────────────────────────
+
+    @application.exception_handler(BirthDataMissingError)
+    async def birth_data_missing_handler(
+        request: Request, exc: BirthDataMissingError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={"detail": exc.message},
+        )
+
     @application.exception_handler(UnsupportedDocumentTypeError)
     async def unsupported_doc_handler(
         request: Request, exc: UnsupportedDocumentTypeError

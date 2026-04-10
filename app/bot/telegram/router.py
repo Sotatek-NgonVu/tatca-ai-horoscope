@@ -2,12 +2,16 @@
 Telegram webhook router.
 
 FastAPI router that receives Telegram Update objects and dispatches
-them to the appropriate handler. Returns HTTP 200 immediately for
-all webhook deliveries (Telegram requirement).
+them to the appropriate handler.  Returns HTTP 200 immediately for
+all webhook deliveries (Telegram requirement --- must respond within
+5 seconds).
+
+Heavy work (RAG pipeline, LLM calls) is offloaded to ``BackgroundTasks``.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -19,7 +23,7 @@ from app.bot.telegram.handlers import (
     THINKING_MESSAGE,
     handle_photo_message,
     handle_start_command,
-    handle_text_message,
+    split_long_message,
 )
 from app.domain.pipeline import RAGPipeline
 from app.infrastructure.dependencies import get_rag_pipeline
@@ -28,13 +32,14 @@ logger = logging.getLogger(__name__)
 
 telegram_router = APIRouter(prefix="/telegram", tags=["Telegram Bot"])
 
+
 # ── Module-level client reference (set during app startup) ───────────────────
 _telegram_client: TelegramClient | None = None
 
 
 def set_telegram_client(client: TelegramClient) -> None:
     """Set the module-level Telegram client (called during startup)."""
-    global _telegram_client
+    global _telegram_client  # noqa: PLW0603
     _telegram_client = client
 
 
@@ -43,6 +48,69 @@ def get_telegram_client() -> TelegramClient:
     if _telegram_client is None:
         raise RuntimeError("TelegramClient not initialized")
     return _telegram_client
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  Background task: process a text message through the RAG pipeline
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+async def _process_text_message(
+    client: TelegramClient,
+    pipeline: RAGPipeline,
+    chat_id: int,
+    text: str,
+    message_id: int,
+) -> None:
+    """
+    Background task: run the user's text query through the RAG pipeline
+    and send the result back via Telegram.
+
+    The pipeline is synchronous (uses pymongo + sentence-transformers),
+    so we run it in a thread pool to avoid blocking the event loop.
+    """
+    try:
+        user_id = str(chat_id)
+
+        loop = asyncio.get_event_loop()
+        answer = await loop.run_in_executor(
+            None,
+            pipeline.chat,
+            user_id,
+            text,
+        )
+
+        # Send the answer (split if > 4096 chars for Telegram's limit)
+        if len(answer) <= 4096:
+            await client.send_message(
+                chat_id=chat_id,
+                text=answer,
+                reply_to_message_id=message_id,
+            )
+        else:
+            chunks = split_long_message(answer)
+            for i, chunk in enumerate(chunks):
+                reply_id = message_id if i == 0 else None
+                await client.send_message(
+                    chat_id=chat_id,
+                    text=chunk,
+                    reply_to_message_id=reply_id,
+                )
+
+    except Exception:
+        logger.exception(
+            "Error processing text message for chat_id=%s", chat_id
+        )
+        await client.send_message(
+            chat_id=chat_id,
+            text="Da xay ra loi khi xu ly tin nhan. Vui long thu lai.",
+            reply_to_message_id=message_id,
+        )
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  Webhook endpoint
+# ═════════════════════════════════════════════════════════════════════════════
 
 
 @telegram_router.post(
@@ -81,7 +149,7 @@ async def telegram_webhook(
     chat_id: int = message["chat"]["id"]
     message_id: int = message["message_id"]
 
-    # ── Route: Photo ──────────────────────────────────────────────────────
+    # ── Route: Photo ─────────────────────────────────────────────────────
     if "photo" in message:
         best_photo = message["photo"][-1]
         file_id: str = best_photo["file_id"]
@@ -112,7 +180,7 @@ async def telegram_webhook(
         )
         return JSONResponse({"ok": True})
 
-    # ── Route: Text / Commands ────────────────────────────────────────────
+    # ── Route: Text / Commands ───────────────────────────────────────────
     text: str = (message.get("text") or "").strip()
 
     if text.startswith("/start"):
@@ -120,8 +188,23 @@ async def telegram_webhook(
         return JSONResponse({"ok": True})
 
     if text:
-        await handle_text_message(client, chat_id, message_id)
+        # Send "Dang xu ly..." acknowledgement immediately
+        await client.send_message(
+            chat_id=chat_id,
+            text="Dang xu ly...",
+            reply_to_message_id=message_id,
+        )
+
+        # Offload RAG pipeline to background task
+        background_tasks.add_task(
+            _process_text_message,
+            client=client,
+            pipeline=pipeline,
+            chat_id=chat_id,
+            text=text,
+            message_id=message_id,
+        )
         return JSONResponse({"ok": True})
 
-    # ── Anything else — silently acknowledge ──────────────────────────────
+    # ── Anything else --- silently acknowledge ───────────────────────────
     return JSONResponse({"ok": True})

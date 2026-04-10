@@ -38,11 +38,11 @@ class Settings(BaseSettings):
     CLAUDE_MAX_TOKENS: int = 4096
     CLAUDE_OCR_MAX_TOKENS: int = 2048
 
-    # ── Google Gemini (embeddings) ─────────────────────────────────────
+    # ── Google Gemini (optional, for future use) ────────────────────────
     GOOGLE_API_KEY: str = ""
 
-    # ── Embedding Model ──────────────────────────────────────────────────
-    EMBEDDING_MODEL: str = "models/gemini-embedding-001"
+    # ── Embedding Model (local sentence-transformers) ────────────────────
+    EMBEDDING_MODEL: str = "paraphrase-multilingual-mpnet-base-v2"
     EMBEDDING_DIMENSIONS: int = 768
 
     # ── RAG Configuration ────────────────────────────────────────────────

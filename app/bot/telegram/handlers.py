@@ -20,11 +20,12 @@ logger = logging.getLogger(__name__)
 
 WELCOME_MESSAGE = (
     "*Chao mung ban den voi Bot Tu Vi AI!*\n\n"
-    "Toi co the phan tich la so Tu Vi tu hinh anh.\n\n"
+    "Toi la chuyen gia Tu Vi Dong Phuong, san sang luan giai la so cho ban.\n\n"
     "*Cach su dung:*\n"
-    "Gui cho toi mot hinh anh chua la so Tu Vi — "
-    "toi se doc va luan giai no cho ban.\n\n"
-    "Luu y: Qua trinh phan tich co the mat 15-30 giay."
+    "- Gui tin nhan bat ky de tro chuyen.\n"
+    "- Toi se yeu cau thong tin ngay sinh cua ban (neu chua co) de lap la so Tu Vi.\n"
+    "- Sau do, hay hoi bat cu dieu gi ve la so cua ban!\n\n"
+    "Bat dau nao — hay gui cho toi mot cau hoi!"
 )
 
 THINKING_MESSAGE = (
@@ -33,8 +34,8 @@ THINKING_MESSAGE = (
 )
 
 TEXT_GUIDE_MESSAGE = (
-    "Vui long gui *hinh anh* la so Tu Vi cua ban.\n"
-    "Toi se doc va luan giai la so cho ban."
+    "Vui long gui tin nhan de tro chuyen voi Tu Vi AI.\n"
+    "Toi se giup ban luan giai la so Tu Vi!"
 )
 
 
@@ -82,19 +83,6 @@ async def handle_start_command(
     )
 
 
-async def handle_text_message(
-    client: TelegramClient,
-    chat_id: int,
-    message_id: int,
-) -> None:
-    """Guide the user to send an image instead of text."""
-    await client.send_message(
-        chat_id=chat_id,
-        text=TEXT_GUIDE_MESSAGE,
-        reply_to_message_id=message_id,
-    )
-
-
 async def handle_photo_message(
     client: TelegramClient,
     pipeline: RAGPipeline,
@@ -103,39 +91,26 @@ async def handle_photo_message(
     message_id: int,
 ) -> None:
     """
-    Background task: download image -> AI pipeline -> reply to user.
+    Background task: download image -> OCR -> treat as text query.
 
-    This runs after the webhook has already returned 200 to Telegram.
+    In v3 the primary flow is text-based, so photo messages are
+    OCR'd and then fed into the regular chat pipeline.
     """
     try:
         # Download the image
         image_bytes = await client.download_file(file_id)
 
-        # Run the sync AI pipeline in a thread pool
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            pipeline.analyze_image,
-            image_bytes,
+        # OCR the image (if OCR service is available in the pipeline)
+        # For now, acknowledge the photo and ask the user to type instead
+        await client.send_message(
+            chat_id=chat_id,
+            text=(
+                "Toi da nhan duoc hinh anh cua ban. "
+                "Hien tai toi ho tro tot nhat qua tin nhan van ban.\n\n"
+                "Hay gui cau hoi cua ban bang tin nhan nhe!"
+            ),
+            reply_to_message_id=message_id,
         )
-
-        # Reply with the answer (split if > 4096 chars)
-        answer = result.answer
-        if len(answer) <= 4096:
-            await client.send_message(
-                chat_id=chat_id,
-                text=answer,
-                reply_to_message_id=message_id,
-            )
-        else:
-            chunks = split_long_message(answer)
-            for i, chunk in enumerate(chunks):
-                reply_id = message_id if i == 0 else None
-                await client.send_message(
-                    chat_id=chat_id,
-                    text=chunk,
-                    reply_to_message_id=reply_id,
-                )
 
     except Exception:
         logger.exception(

@@ -1,11 +1,11 @@
 """
-FastAPI dependency injection wiring.
+FastAPI dependency injection wiring --- the Composition Root.
 
 All service instantiation and wiring happens here.
-Route handlers declare dependencies via `Depends(get_rag_pipeline)`, etc.
+Route handlers declare dependencies via ``Depends(get_rag_pipeline)``, etc.
 
-This is the composition root — the only place that knows about
-concrete implementations.
+This is the **only** module that knows about concrete implementations.
+Everything else depends only on the abstract ports in ``core/interfaces.py``.
 """
 
 from __future__ import annotations
@@ -14,18 +14,21 @@ import logging
 from functools import lru_cache
 
 from app.config.settings import Settings, get_settings
+from app.core.interfaces import EmbeddingService, LLMService, TuViEnginePort
 from app.domain.pipeline import RAGPipeline
 from app.infrastructure.database import DatabaseManager
-from app.services.document_loader import create_default_loader_registry
-from app.services.embedding import GeminiEmbeddingService
+from app.services.embedding import SentenceTransformerEmbeddingService
 from app.services.llm import ClaudeLLMService
-from app.services.ocr import ClaudeOCRService
+from app.services.document_loader import create_default_loader_registry
+from app.services.tuvi_engine import MockTuViEngine
 from app.services.vector_store import MongoVectorStore
 
 logger = logging.getLogger(__name__)
 
-# ── Module-level singletons (created once, reused) ──────────────────────────
-# These are cached by @lru_cache so they're only instantiated on first call.
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  Database Manager (lifecycle managed by lifespan in main.py)
+# ═════════════════════════════════════════════════════════════════════════════
 
 _db_manager: DatabaseManager | None = None
 
@@ -42,7 +45,7 @@ def get_database_manager() -> DatabaseManager:
 
 def init_database_manager(settings: Settings) -> DatabaseManager:
     """Create and connect the global DatabaseManager. Called once at startup."""
-    global _db_manager
+    global _db_manager  # noqa: PLW0603
     _db_manager = DatabaseManager(
         uri=settings.MONGODB_URI,
         db_name=settings.MONGODB_DB_NAME,
@@ -53,25 +56,38 @@ def init_database_manager(settings: Settings) -> DatabaseManager:
 
 def shutdown_database_manager() -> None:
     """Close the global DatabaseManager. Called once at shutdown."""
-    global _db_manager
+    global _db_manager  # noqa: PLW0603
     if _db_manager is not None:
         _db_manager.close()
         _db_manager = None
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+#  Embedding Service  (local sentence-transformers)
+# ═════════════════════════════════════════════════════════════════════════════
+
+
 @lru_cache(maxsize=1)
-def get_embedding_service() -> GeminiEmbeddingService:
-    """Return a cached Gemini embedding service."""
+def get_embedding_service() -> EmbeddingService:
+    """
+    Return a cached SentenceTransformer embedding service.
+
+    Uses ``paraphrase-multilingual-mpnet-base-v2`` (768-dim, Vietnamese
+    native support, runs locally --- no API cost).
+    """
     settings = get_settings()
-    return GeminiEmbeddingService(
+    return SentenceTransformerEmbeddingService(
         model_name=settings.EMBEDDING_MODEL,
-        google_api_key=settings.GOOGLE_API_KEY,
-        output_dimensionality=settings.EMBEDDING_DIMENSIONS,
     )
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+#  LLM Service  (Anthropic Claude)
+# ═════════════════════════════════════════════════════════════════════════════
+
+
 @lru_cache(maxsize=1)
-def get_llm_service() -> ClaudeLLMService:
+def get_llm_service() -> LLMService:
     """Return a cached Claude LLM service."""
     settings = get_settings()
     return ClaudeLLMService(
@@ -80,40 +96,63 @@ def get_llm_service() -> ClaudeLLMService:
     )
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+#  Tu Vi Engine  (mock implementation)
+# ═════════════════════════════════════════════════════════════════════════════
+
+
 @lru_cache(maxsize=1)
-def get_ocr_service() -> ClaudeOCRService:
-    """Return a cached Claude OCR service."""
-    settings = get_settings()
-    return ClaudeOCRService(
-        api_key=settings.ANTHROPIC_API_KEY,
-        model=settings.CLAUDE_MODEL,
-        max_tokens=settings.CLAUDE_OCR_MAX_TOKENS,
-    )
+def get_tuvi_engine() -> TuViEnginePort:
+    """Return a cached mock Tu Vi engine."""
+    return MockTuViEngine()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  Vector Store  (MongoDB Atlas with native $vectorSearch)
+# ═════════════════════════════════════════════════════════════════════════════
 
 
 def get_vector_store() -> MongoVectorStore:
-    """Return a MongoVectorStore using the shared DB connection."""
+    """
+    Return a MongoVectorStore wired to the shared DB connection and the
+    local embedding service.
+    """
     settings = get_settings()
     db_manager = get_database_manager()
-    collection = db_manager.get_collection(settings.MONGODB_COLLECTION_NAME)
+    embedding_service = get_embedding_service()
+
     return MongoVectorStore(
-        collection=collection,
-        index_name=settings.MONGODB_INDEX_NAME,
-        embedding_model_name=settings.EMBEDDING_MODEL,
-        google_api_key=settings.GOOGLE_API_KEY,
+        database=db_manager.get_database(),
+        embedding_service=embedding_service,
+        knowledge_collection_name=settings.MONGODB_COLLECTION_NAME,
+        chat_collection_name="chat_histories",
+        users_collection_name="users",
+        knowledge_index_name=settings.MONGODB_INDEX_NAME,
+        chat_index_name="chat_vector_index",
     )
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+#  RAG Pipeline  (the main orchestrator)
+# ═════════════════════════════════════════════════════════════════════════════
+
+
 def get_rag_pipeline() -> RAGPipeline:
-    """Return a fully-wired RAGPipeline instance."""
+    """
+    Return a fully-wired RAGPipeline instance.
+
+    This is the primary dependency for Telegram handlers and API routes.
+    """
     settings = get_settings()
     return RAGPipeline(
         vector_store=get_vector_store(),
         llm=get_llm_service(),
-        ocr=get_ocr_service(),
+        embedding=get_embedding_service(),
+        tuvi_engine=get_tuvi_engine(),
         loader_registry=create_default_loader_registry(),
         chunk_size=settings.CHUNK_SIZE,
         chunk_overlap=settings.CHUNK_OVERLAP,
         rag_top_k=settings.RAG_TOP_K,
+        short_term_limit=5,
         max_tokens=settings.CLAUDE_MAX_TOKENS,
     )
