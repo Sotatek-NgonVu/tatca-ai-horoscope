@@ -1,0 +1,49 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    name: Python ${{ matrix.python-version }} — Build & Test
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint with Ruff
+        run: |
+          pip install ruff
+          ruff check app/ tests/
+
+      - name: Check all modules compile
+        run: |
+          python -m compileall app/ -q
+
+      - name: Run tests
+        env:
+          ANTHROPIC_API_KEY: sk-ant-dummy-key-for-ci
+          MONGODB_URI: mongodb://localhost:27017
+          GOOGLE_API_KEY: dummy-google-key
+        run: |
+          python -m pytest tests/ -v --tb=short
