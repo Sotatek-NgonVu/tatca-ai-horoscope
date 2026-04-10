@@ -61,6 +61,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         init_database_manager,
         shutdown_database_manager,
     )
+    from app.infrastructure.setup import ensure_collections_and_indexes
 
     settings = get_settings()
 
@@ -68,27 +69,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Initializing database connection...")
     db_manager = init_database_manager(settings)
 
-    # ── 2. Ensure required collections exist ─────────────────────────────
-    db = db_manager.get_database()
-    existing_collections = db.list_collection_names()
-    for col_name in ["chat_histories", "users", settings.MONGODB_COLLECTION_NAME]:
-        if col_name not in existing_collections:
-            db.create_collection(col_name)
-            logger.info("Created collection: %s", col_name)
+    # ── 2. Ensure required collections and indexes exist ─────────────────
+    ensure_collections_and_indexes(db_manager.get_database(), settings)
 
-    # Ensure indexes on chat_histories for efficient queries
-    chat_col = db["chat_histories"]
-    chat_col.create_index([("user_id", 1), ("created_at", -1)])
-    logger.info("Ensured index on chat_histories(user_id, created_at)")
-
-    # Ensure index on users
-    users_col = db["users"]
-    users_col.create_index("user_id", unique=True)
-    logger.info("Ensured unique index on users(user_id)")
+    # Keep a reference so we can close the HTTP client on shutdown.
+    _telegram_client_ref: TelegramClient | None = None
 
     # ── 3. Register Telegram webhook ─────────────────────────────────────
     if settings.TELEGRAM_BOT_TOKEN and settings.WEBHOOK_BASE_URL:
         telegram_client = TelegramClient(settings.TELEGRAM_BOT_TOKEN)
+        _telegram_client_ref = telegram_client
         set_telegram_client(telegram_client)
 
         webhook_url = f"{settings.WEBHOOK_BASE_URL.rstrip('/')}/telegram/webhook"
@@ -108,6 +98,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # ── Shutdown ─────────────────────────────────────────────────────────
     logger.info("Shutting down...")
+    if _telegram_client_ref is not None:
+        await _telegram_client_ref.aclose()
     shutdown_database_manager()
 
 

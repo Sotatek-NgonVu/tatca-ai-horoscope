@@ -1,4 +1,4 @@
-# Setup & Run Guide — Tu Vi RAG Chatbot v3.0
+# Setup & Run Guide — Tu Vi RAG Chatbot v4.0
 
 ## Prerequisites
 
@@ -68,9 +68,9 @@ WEBHOOK_BASE_URL=https://xxxx.ngrok.io   # See Step 5 below
 
 All other settings have sensible defaults. See `.env.example` for the full list.
 
-> **Embeddings:** The app uses **Google Gemini `text-embedding-004`** — free tier (1,500 req/min),
-> 768 dimensions, multilingual (Vietnamese + 100 languages). No local model download needed.
-> Get a free API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+> **Embeddings:** The app uses **`paraphrase-multilingual-mpnet-base-v2`** (sentence-transformers) —
+> 768 dimensions, Vietnamese-native, runs **fully locally** — no API key or internet required after
+> the first model download.
 
 ---
 

@@ -93,6 +93,7 @@ def get_llm_service() -> LLMService:
     return ClaudeLLMService(
         api_key=settings.ANTHROPIC_API_KEY,
         model=settings.CLAUDE_MODEL,
+        extraction_model=settings.CLAUDE_EXTRACTION_MODEL,
     )
 
 
@@ -112,9 +113,10 @@ def get_tuvi_engine() -> TuViEnginePort:
 # ═════════════════════════════════════════════════════════════════════════════
 
 
+@lru_cache(maxsize=1)
 def get_vector_store() -> MongoVectorStore:
     """
-    Return a MongoVectorStore wired to the shared DB connection and the
+    Return a cached MongoVectorStore wired to the shared DB connection and the
     local embedding service.
     """
     settings = get_settings()
@@ -125,23 +127,20 @@ def get_vector_store() -> MongoVectorStore:
         database=db_manager.get_database(),
         embedding_service=embedding_service,
         knowledge_collection_name=settings.MONGODB_COLLECTION_NAME,
-        chat_collection_name="chat_histories",
-        users_collection_name="users",
+        chat_collection_name=settings.MONGODB_CHAT_COLLECTION,
+        users_collection_name=settings.MONGODB_USERS_COLLECTION,
         knowledge_index_name=settings.MONGODB_INDEX_NAME,
-        chat_index_name="chat_vector_index",
+        chat_index_name=settings.MONGODB_CHAT_INDEX_NAME,
     )
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  RAG Pipeline  (the main orchestrator)
-# ═════════════════════════════════════════════════════════════════════════════
-
-
+@lru_cache(maxsize=1)
 def get_rag_pipeline() -> RAGPipeline:
     """
-    Return a fully-wired RAGPipeline instance.
+    Return a fully-wired RAGPipeline singleton.
 
     This is the primary dependency for Telegram handlers and API routes.
+    Cached so the in-memory _pending dict persists across requests.
     """
     settings = get_settings()
     return RAGPipeline(

@@ -33,9 +33,15 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     WEBHOOK_BASE_URL: str = ""
 
+    # ── MongoDB Collection / Index Names ────────────────────────────────
+    MONGODB_CHAT_COLLECTION: str = "chat_histories"
+    MONGODB_USERS_COLLECTION: str = "users"
+    MONGODB_CHAT_INDEX_NAME: str = "chat_vector_index"
+
     # ── Claude Model ─────────────────────────────────────────────────────
     CLAUDE_MODEL: str = "claude-haiku-4-5"
-    CLAUDE_MAX_TOKENS: int = 4096
+    CLAUDE_EXTRACTION_MODEL: str = "claude-haiku-4-5"
+    CLAUDE_MAX_TOKENS: int = 16000
     CLAUDE_OCR_MAX_TOKENS: int = 2048
 
     # ── Google Gemini (optional, for future use) ────────────────────────

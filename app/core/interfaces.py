@@ -52,6 +52,33 @@ class LLMService(ABC):
         """Generate a response given a system prompt and user message."""
 
     @abstractmethod
+    def generate_with_cache(
+        self,
+        *,
+        system_prompt: str,
+        chart_json: dict[str, Any],
+        conversation_context: str,
+        query: str,
+        max_tokens: int = 16000,
+    ) -> str:
+        """
+        Generate a response using Anthropic prompt caching.
+
+        Caches the system prompt and chart JSON as ``ephemeral`` content
+        blocks so they are reused across turns without re-processing costs.
+
+        Args:
+            system_prompt: The full Tu Vi expert system prompt.
+            chart_json: The user's pre-serialised Tu Vi chart dict.
+            conversation_context: Short-term + long-term memory as a string.
+            query: The user's current question.
+            max_tokens: Maximum output tokens.
+
+        Returns:
+            The model's generated response string.
+        """
+
+    @abstractmethod
     def extract_structured(
         self,
         *,

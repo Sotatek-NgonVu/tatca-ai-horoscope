@@ -22,12 +22,20 @@ class TelegramClient(BaseBotHandler):
     HTTP client for the Telegram Bot API.
 
     Handles sending messages and downloading files via the Bot API.
+    A single persistent ``httpx.AsyncClient`` is reused for all requests to
+    avoid per-call TCP handshake overhead.
     """
 
     def __init__(self, bot_token: str) -> None:
         self._bot_token = bot_token
         self._api_base = f"https://api.telegram.org/bot{bot_token}"
         self._file_base = f"https://api.telegram.org/file/bot{bot_token}"
+        # Reuse a single AsyncClient — avoids per-call TCP overhead.
+        self._http = httpx.AsyncClient(timeout=60.0)
+
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client. Call during application shutdown."""
+        await self._http.aclose()
 
     async def send_message(
         self,
@@ -46,16 +54,15 @@ class TelegramClient(BaseBotHandler):
         if reply_to_message_id:
             payload["reply_to_message_id"] = reply_to_message_id
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                f"{self._api_base}/sendMessage", json=payload
+        resp = await self._http.post(
+            f"{self._api_base}/sendMessage", json=payload
+        )
+        if not resp.is_success:
+            logger.error(
+                "sendMessage failed: status=%d body=%s",
+                resp.status_code,
+                resp.text,
             )
-            if not resp.is_success:
-                logger.error(
-                    "sendMessage failed: status=%d body=%s",
-                    resp.status_code,
-                    resp.text,
-                )
 
     async def download_file(self, file_id: str) -> bytes:
         """
@@ -65,26 +72,25 @@ class TelegramClient(BaseBotHandler):
             1. Resolve file_id -> file_path via getFile API
             2. Download the actual bytes from Telegram CDN
         """
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            # Resolve file_id -> file_path
-            get_file_resp = await client.get(
-                f"{self._api_base}/getFile",
-                params={"file_id": file_id},
-            )
-            get_file_resp.raise_for_status()
-            file_path: str = get_file_resp.json()["result"]["file_path"]
+        # Resolve file_id -> file_path
+        get_file_resp = await self._http.get(
+            f"{self._api_base}/getFile",
+            params={"file_id": file_id},
+        )
+        get_file_resp.raise_for_status()
+        file_path: str = get_file_resp.json()["result"]["file_path"]
 
-            # Download bytes
-            download_url = f"{self._file_base}/{file_path}"
-            download_resp = await client.get(download_url)
-            download_resp.raise_for_status()
+        # Download bytes
+        download_url = f"{self._file_base}/{file_path}"
+        download_resp = await self._http.get(download_url)
+        download_resp.raise_for_status()
 
-            logger.info(
-                "Downloaded file (file_id=%s): %d bytes",
-                file_id,
-                len(download_resp.content),
-            )
-            return download_resp.content
+        logger.info(
+            "Downloaded file (file_id=%s): %d bytes",
+            file_id,
+            len(download_resp.content),
+        )
+        return download_resp.content
 
     async def register_webhook(self, webhook_url: str) -> bool:
         """
@@ -94,25 +100,24 @@ class TelegramClient(BaseBotHandler):
         """
         logger.info("Registering Telegram webhook: %s", webhook_url)
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.post(
-                    f"{self._api_base}/setWebhook",
-                    json={
-                        "url": webhook_url,
-                        "allowed_updates": ["message", "edited_message"],
-                        "drop_pending_updates": True,
-                    },
+            resp = await self._http.post(
+                f"{self._api_base}/setWebhook",
+                json={
+                    "url": webhook_url,
+                    "allowed_updates": ["message", "edited_message"],
+                    "drop_pending_updates": True,
+                },
+            )
+            result = resp.json()
+            if result.get("ok"):
+                logger.info("Telegram webhook registered successfully")
+                return True
+            else:
+                logger.error(
+                    "Failed to register webhook: %s",
+                    result.get("description"),
                 )
-                result = resp.json()
-                if result.get("ok"):
-                    logger.info("Telegram webhook registered successfully")
-                    return True
-                else:
-                    logger.error(
-                        "Failed to register webhook: %s",
-                        result.get("description"),
-                    )
-                    return False
+                return False
         except Exception:
             logger.exception("Exception while registering Telegram webhook")
             return False

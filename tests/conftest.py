@@ -108,6 +108,32 @@ class FakeLLMService(LLMService):
         )
         return self.response
 
+    def generate_with_cache(
+        self,
+        *,
+        system_prompt: str,
+        chart_json: dict,
+        conversation_context: str,
+        query: str,
+        max_tokens: int = 16000,
+    ) -> str:
+        # Reconstruct a user_message compatible with existing test assertions.
+        import json
+        parts = []
+        if chart_json:
+            parts.append(
+                "## La so Tu Vi cua nguoi dung\n\n"
+                f"```json\n{json.dumps(chart_json, ensure_ascii=False, indent=2)}\n```"
+            )
+        if conversation_context:
+            parts.append(conversation_context)
+        parts.append(f"## Cau hoi hien tai\n\n{query}")
+        user_message = "\n\n---\n\n".join(parts)
+        self.generate_calls.append(
+            {"system_prompt": system_prompt, "user_message": user_message, "max_tokens": max_tokens}
+        )
+        return self.response
+
     def extract_structured(
         self,
         *,

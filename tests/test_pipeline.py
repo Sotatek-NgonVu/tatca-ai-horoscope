@@ -296,6 +296,9 @@ class TestRAGPipelineChatErrorHandling:
             def generate(self, *, system_prompt, user_message, max_tokens=4096):
                 raise LLMAuthenticationError("bad key")
 
+            def generate_with_cache(self, *, system_prompt, chart_json, conversation_context, query, max_tokens=16000):
+                raise LLMAuthenticationError("bad key")
+
         pipeline = make_pipeline(vector_store=store, llm=AuthFailLLM())
         answer = pipeline.chat("user_1", "Hello")
 
@@ -310,6 +313,9 @@ class TestRAGPipelineChatErrorHandling:
             def generate(self, *, system_prompt, user_message, max_tokens=4096):
                 raise LLMRateLimitError("too many requests")
 
+            def generate_with_cache(self, *, system_prompt, chart_json, conversation_context, query, max_tokens=16000):
+                raise LLMRateLimitError("too many requests")
+
         pipeline = make_pipeline(vector_store=store, llm=RateLimitLLM())
         answer = pipeline.chat("user_1", "Hello")
 
@@ -322,6 +328,9 @@ class TestRAGPipelineChatErrorHandling:
 
         class BrokenLLM(FakeLLMService):
             def generate(self, *, system_prompt, user_message, max_tokens=4096):
+                raise RuntimeError("totally unexpected")
+
+            def generate_with_cache(self, *, system_prompt, chart_json, conversation_context, query, max_tokens=16000):
                 raise RuntimeError("totally unexpected")
 
         pipeline = make_pipeline(vector_store=store, llm=BrokenLLM())
