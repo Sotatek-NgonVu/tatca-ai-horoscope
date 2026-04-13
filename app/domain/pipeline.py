@@ -30,6 +30,7 @@ from app.core.exceptions import (
     VectorStoreError,
 )
 from app.core.interfaces import (
+    ChartRendererPort,
     EmbeddingService,
     LLMService,
     TuViEnginePort,
@@ -39,6 +40,7 @@ from app.domain.birth_data_collector import BirthDataCollector, _PartialBirthDat
 from app.domain.models import (
     BirthData,
     ChatMessage,
+    ChatResponse,
     Chunk,
     IngestionResult,
     MessageRole,
@@ -71,6 +73,7 @@ class RAGPipeline:
         llm: LLMService,
         embedding: EmbeddingService,
         tuvi_engine: TuViEnginePort,
+        chart_renderer: ChartRendererPort | None = None,
         loader_registry: Any | None = None,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
@@ -82,6 +85,7 @@ class RAGPipeline:
         self._llm = llm
         self._embedding = embedding
         self._tuvi = tuvi_engine
+        self._renderer = chart_renderer
         self._loader_registry = loader_registry
         self._rag_top_k = rag_top_k
         self._short_term_limit = short_term_limit
@@ -154,7 +158,7 @@ class RAGPipeline:
     #  Pipeline 2 --- Chat (the main RAG pipeline)
     # =================================================================
 
-    def chat(self, user_id: str, query: str) -> str:
+    def chat(self, user_id: str, query: str) -> ChatResponse:
         """
         Full RAG pipeline for a single user query.
 
@@ -165,6 +169,7 @@ class RAGPipeline:
             4. Fetch long-term memory (vector search).
             5. Assemble context and call the LLM.
             6. Persist both query and response.
+            7. Optionally render a chart image.
 
         Never raises to the caller --- returns a user-friendly error
         message on failure.
@@ -174,14 +179,21 @@ class RAGPipeline:
             birth_data = self._collector.get_birth_data(user_id)
 
             if birth_data is None:
-                return self._collector.handle(user_id, query)
+                text = self._collector.handle(user_id, query)
+                return ChatResponse(text=text)
 
             # -- Step 2: Generate Tu Vi chart --
             chart_json = self._generate_chart(birth_data)
 
+            # -- Step 2b: Render chart image (if renderer available) --
+            chart_image: bytes | None = None
+            if self._renderer and chart_json:
+                try:
+                    chart_image = self._renderer.render_chart(chart_json)
+                except Exception:
+                    logger.exception("Chart rendering failed (non-fatal)")
+
             # -- Step 3 + 4 (parallel): short-term memory and embed query --
-            # Embedding the query and fetching the chat log are independent;
-            # run them concurrently to cut the serial wait time roughly in half.
             with ThreadPoolExecutor(max_workers=2) as pool:
                 short_term_future = pool.submit(
                     self._fetch_short_term_memory, user_id
@@ -211,24 +223,24 @@ class RAGPipeline:
                     "Vui long thu lai sau."
                 )
 
-            # -- Step 6: Persist messages (reuse query embedding already computed) --
+            # -- Step 6: Persist messages --
             self._persist_messages(user_id, query, answer, query_embedding=query_embedding)
 
-            return answer
+            return ChatResponse(text=answer, chart_image=chart_image)
 
         except LLMAuthenticationError:
             logger.error("Anthropic API key is invalid")
-            return "Loi xac thuc API. Vui long lien he quan tri vien."
+            return ChatResponse(text="Loi xac thuc API. Vui long lien he quan tri vien.")
 
         except LLMRateLimitError:
             logger.warning("Anthropic rate limit hit")
-            return "He thong dang ban. Vui long thu lai sau vai giay."
+            return ChatResponse(text="He thong dang ban. Vui long thu lai sau vai giay.")
 
         except Exception:
             logger.exception("Unexpected error in RAGPipeline.chat")
-            return (
-                "Da xay ra loi khi xu ly yeu cau cua ban. "
-                "Vui long thu lai hoac lien he quan tri vien."
+            return ChatResponse(
+                text="Da xay ra loi khi xu ly yeu cau cua ban. "
+                     "Vui long thu lai hoac lien he quan tri vien."
             )
 
     # =================================================================

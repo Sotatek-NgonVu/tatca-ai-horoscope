@@ -228,9 +228,9 @@ class TestRAGPipelineChatHappyPath:
         store.upsert_user("user_1", {"birth_data": bd.model_dump()})
 
         pipeline = make_pipeline(vector_store=store, llm=llm)
-        answer = pipeline.chat("user_1", "Menh toi la gi?")
+        response = pipeline.chat("user_1", "Menh toi la gi?")
 
-        assert answer == "Day la cau tra loi cua Tu Vi AI"
+        assert response.text == "Day la cau tra loi cua Tu Vi AI"
 
     def test_chat_calls_llm_generate(self) -> None:
         store = InMemoryVectorStore()
@@ -275,10 +275,10 @@ class TestRAGPipelineChatHappyPath:
         store.upsert_user("user_1", {"birth_data": bd.model_dump()})
 
         pipeline = make_pipeline(vector_store=store, llm=llm)
-        answer = pipeline.chat("user_1", "My query")
+        response = pipeline.chat("user_1", "My query")
 
-        assert len(answer) > 0
-        assert "loi" in answer.lower() or "thu lai" in answer.lower()
+        assert len(response.text) > 0
+        assert "loi" in response.text.lower() or "thu lai" in response.text.lower()
 
 
 # =============================================================================
@@ -300,9 +300,9 @@ class TestRAGPipelineChatErrorHandling:
                 raise LLMAuthenticationError("bad key")
 
         pipeline = make_pipeline(vector_store=store, llm=AuthFailLLM())
-        answer = pipeline.chat("user_1", "Hello")
+        response = pipeline.chat("user_1", "Hello")
 
-        assert "API" in answer or "xac thuc" in answer.lower()
+        assert "API" in response.text or "xac thuc" in response.text.lower()
 
     def test_llm_rate_limit_error_returns_friendly_message(self) -> None:
         store = InMemoryVectorStore()
@@ -317,9 +317,9 @@ class TestRAGPipelineChatErrorHandling:
                 raise LLMRateLimitError("too many requests")
 
         pipeline = make_pipeline(vector_store=store, llm=RateLimitLLM())
-        answer = pipeline.chat("user_1", "Hello")
+        response = pipeline.chat("user_1", "Hello")
 
-        assert "ban" in answer.lower() or "thu lai" in answer.lower()
+        assert "ban" in response.text.lower() or "thu lai" in response.text.lower()
 
     def test_unexpected_error_returns_friendly_message(self) -> None:
         store = InMemoryVectorStore()
@@ -334,9 +334,9 @@ class TestRAGPipelineChatErrorHandling:
                 raise RuntimeError("totally unexpected")
 
         pipeline = make_pipeline(vector_store=store, llm=BrokenLLM())
-        answer = pipeline.chat("user_1", "Hello")
+        response = pipeline.chat("user_1", "Hello")
 
-        assert len(answer) > 0
+        assert len(response.text) > 0
 
 
 # =============================================================================
@@ -350,12 +350,12 @@ class TestRAGPipelineBirthDataCollection:
         llm.set_extract_response(None)  # LLM finds nothing
 
         pipeline = make_pipeline(llm=llm)
-        answer = pipeline.chat("new_user", "Xin chao")
+        response = pipeline.chat("new_user", "Xin chao")
 
         # Should ask for birth data
-        assert len(answer) > 0
+        assert len(response.text) > 0
         # The pipeline prompts for birth data
-        assert "sinh" in answer.lower() or "thong tin" in answer.lower() or "chao" in answer.lower()
+        assert "sinh" in response.text.lower() or "thong tin" in response.text.lower() or "chao" in response.text.lower()
 
     def test_complete_birth_data_in_first_message_saves_and_responds(self) -> None:
         store = InMemoryVectorStore()
@@ -368,14 +368,14 @@ class TestRAGPipelineBirthDataCollection:
         })
 
         pipeline = make_pipeline(vector_store=store, llm=llm)
-        answer = pipeline.chat("new_user", "Nguyen Van A, Nam, 15/05/1990, gio Ty")
+        response = pipeline.chat("new_user", "Nguyen Van A, Nam, 15/05/1990, gio Ty")
 
         # Birth data should be saved
         user_doc = store.get_user("new_user")
         assert user_doc is not None
         assert "birth_data" in user_doc
         # Response should not be the raw birth data prompt
-        assert len(answer) > 0
+        assert len(response.text) > 0
 
     def test_partial_birth_data_accumulates_across_turns(self) -> None:
         store = InMemoryVectorStore()
@@ -389,10 +389,10 @@ class TestRAGPipelineBirthDataCollection:
             "birth_hour": None,
         })
         pipeline = make_pipeline(vector_store=store, llm=llm)
-        answer_1 = pipeline.chat("user_partial", "Ten toi la Alice")
+        response_1 = pipeline.chat("user_partial", "Ten toi la Alice")
 
         # Should still be collecting
-        assert "Alice" in answer_1 or "ten" in answer_1.lower() or "thong tin" in answer_1.lower()
+        assert "Alice" in response_1.text or "ten" in response_1.text.lower() or "thong tin" in response_1.text.lower()
 
         # Second turn: provide remaining fields
         llm.set_extract_response({

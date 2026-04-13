@@ -137,3 +137,17 @@ class AnalysisResult:
     answer: str
     ocr_text: str
     chunks_used: int
+
+
+@dataclass
+class ChatResponse:
+    """
+    Result of a chat pipeline invocation.
+
+    Carries the text answer and an optional chart image (PNG bytes)
+    when the user's Tu Vi chart has just been generated for the first time.
+    """
+
+    text: str
+    chart_image: bytes | None = None
+

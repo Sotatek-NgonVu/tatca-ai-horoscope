@@ -64,6 +64,33 @@ class TelegramClient(BaseBotHandler):
                 resp.text,
             )
 
+    async def send_photo(
+        self,
+        chat_id: int | str,
+        photo_bytes: bytes,
+        *,
+        caption: str = "",
+        reply_to_message_id: int | None = None,
+    ) -> None:
+        """Send a photo (PNG bytes) to a Telegram chat."""
+        data: dict[str, Any] = {"chat_id": str(chat_id)}
+        if caption:
+            data["caption"] = caption
+        if reply_to_message_id:
+            data["reply_to_message_id"] = str(reply_to_message_id)
+
+        files = {"photo": ("chart.png", photo_bytes, "image/png")}
+
+        resp = await self._http.post(
+            f"{self._api_base}/sendPhoto", data=data, files=files,
+        )
+        if not resp.is_success:
+            logger.error(
+                "sendPhoto failed: status=%d body=%s",
+                resp.status_code,
+                resp.text,
+            )
+
     async def download_file(self, file_id: str) -> bytes:
         """
         Download a file from Telegram by file_id.

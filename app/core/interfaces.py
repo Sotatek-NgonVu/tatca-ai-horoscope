@@ -229,3 +229,29 @@ class DocumentLoader(ABC):
     @abstractmethod
     def load(self, file_path: str) -> list[Chunk]:
         """Parse the file and return a list of Chunk objects."""
+
+
+class ChartRendererPort(ABC):
+    """
+    Port for rendering a Tu Vi chart to an image.
+
+    Implementations convert the structured chart dictionary (from
+    TuViEnginePort.generate_chart) into a visual representation.
+    """
+
+    @abstractmethod
+    def render_chart(self, chart_data: dict[str, Any]) -> bytes:
+        """
+        Render a Tu Vi chart as a PNG image.
+
+        Parameters
+        ----------
+        chart_data:
+            The structured chart dictionary produced by
+            ``TuViEnginePort.generate_chart()``.
+
+        Returns
+        -------
+        bytes
+            PNG image data.
+        """

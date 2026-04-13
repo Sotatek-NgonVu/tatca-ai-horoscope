@@ -73,14 +73,25 @@ async def _process_text_message(
         user_id = str(chat_id)
 
         loop = asyncio.get_event_loop()
-        answer = await loop.run_in_executor(
+        response = await loop.run_in_executor(
             None,
             pipeline.chat,
             user_id,
             text,
         )
 
-        # Send the answer (split if > 4096 chars for Telegram's limit)
+        # Send chart image first (if the pipeline generated one)
+        if response.chart_image:
+            await client.send_photo(
+                chat_id=chat_id,
+                photo_bytes=response.chart_image,
+                caption="Lá Số Tử Vi",
+                reply_to_message_id=message_id,
+            )
+
+        answer = response.text
+
+        # Send the text answer (split if > 4096 chars for Telegram's limit)
         if len(answer) <= 4096:
             await client.send_message(
                 chat_id=chat_id,

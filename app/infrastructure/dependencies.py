@@ -14,13 +14,14 @@ import logging
 from functools import lru_cache
 
 from app.config.settings import Settings, get_settings
-from app.core.interfaces import EmbeddingService, LLMService, TuViEnginePort
+from app.core.interfaces import ChartRendererPort, EmbeddingService, LLMService, TuViEnginePort
 from app.domain.pipeline import RAGPipeline
 from app.infrastructure.database import DatabaseManager
+from app.services.chart_renderer import PillowChartRenderer
 from app.services.embedding import SentenceTransformerEmbeddingService
 from app.services.llm import ClaudeLLMService
 from app.services.document_loader import create_default_loader_registry
-from app.services.tuvi_engine import MockTuViEngine
+from app.services.tuvi_engine import LasoTuViEngine
 from app.services.vector_store import MongoVectorStore
 
 logger = logging.getLogger(__name__)
@@ -98,14 +99,25 @@ def get_llm_service() -> LLMService:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  Tu Vi Engine  (mock implementation)
+#  Tu Vi Engine  (real calculation engine)
 # ═════════════════════════════════════════════════════════════════════════════
 
 
 @lru_cache(maxsize=1)
 def get_tuvi_engine() -> TuViEnginePort:
-    """Return a cached mock Tu Vi engine."""
-    return MockTuViEngine()
+    """Return a cached lasotuvi-backed Tu Vi calculation engine."""
+    return LasoTuViEngine()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  Chart Renderer  (Pillow-based image renderer)
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+@lru_cache(maxsize=1)
+def get_chart_renderer() -> ChartRendererPort:
+    """Return a cached Pillow chart renderer."""
+    return PillowChartRenderer()
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -148,6 +160,7 @@ def get_rag_pipeline() -> RAGPipeline:
         llm=get_llm_service(),
         embedding=get_embedding_service(),
         tuvi_engine=get_tuvi_engine(),
+        chart_renderer=get_chart_renderer(),
         loader_registry=create_default_loader_registry(),
         chunk_size=settings.CHUNK_SIZE,
         chunk_overlap=settings.CHUNK_OVERLAP,
