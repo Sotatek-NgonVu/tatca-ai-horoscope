@@ -26,20 +26,12 @@ from app.domain.models import BirthData
 
 logger = logging.getLogger(__name__)
 
-# ── Make the vendored lasotuvi package importable ────────────────────────────
-# lasotuvi/ package lives at project root (app/services/../../lasotuvi)
-_PROJECT_ROOT = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..")
-)
-if _PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, _PROJECT_ROOT)
-
-# Lazy imports so startup fails loudly if the folder is missing
+# ── Import from internal horoscope_engine package ────────────────────────────
 try:
-    from lasotuvi.App import lapDiaBan           # noqa: E402
-    from lasotuvi.DiaBan import diaBan as DiaBanClass  # noqa: E402
-    from lasotuvi.ThienBan import lapThienBan    # noqa: E402
-    from lasotuvi.AmDuong import diaChi          # noqa: E402
+    from app.horoscope_engine.App import lapDiaBan
+    from app.horoscope_engine.DiaBan import diaBan as DiaBanClass
+    from app.horoscope_engine.ThienBan import lapThienBan
+    from app.horoscope_engine.AmDuong import diaChi
 
     _LASOTUVI_AVAILABLE = True
 except ImportError as _e:

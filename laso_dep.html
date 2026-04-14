@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lá Số Tử Vi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --border-color: #d1d5db;
+            --main-star-color: #d97706; /* Orange */
+            --good-star-color: #059669; /* Green */
+            --bad-star-color: #dc2626; /* Red */
+            --text-color: #1f2937;
+            --muted: #6b7280;
+            --bg-color: #f9fafb;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: white;
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .tuvi-wrapper {
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin: 0;
+            color: #111827;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 1px;
+            background-color: var(--border-color);
+            border: 1px solid var(--border-color);
+            height: 1200px; /* Force aspect ratio */
+        }
+
+        /* The 12 palaces */
+        .cell {
+            background-color: white;
+            position: relative;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cell-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .cung-can-chi {color: var(--bad-star-color);}
+        .cung-name {font-weight: bold; font-size: 14px;}
+        .cung-tuoi {font-weight: bold;}
+
+        /* Stars */
+        .stars-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .chinh-tinh {
+            color: var(--main-star-color);
+            font-weight: bold;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .minor-stars {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            font-size: 13px;
+            gap: 5px;
+            line-height: 1.3;
+        }
+
+        .good-stars { color: var(--good-star-color); }
+        .bad-stars { color: var(--bad-star-color); }
+
+        .cell-footer {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-top: auto;
+            border-top: 1px dashed #e5e7eb;
+            padding-top: 5px;
+        }
+
+        .tuan-triet {
+            position: absolute;
+            background: black;
+            color: white;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .tuan-triet.tuan { top: -10px; left: 40%; }
+        .tuan-triet.triet { top: -10px; right: 40%; }
+        .tuan-triet.tuan-triet-both { top: -10px; left: 35%; }
+
+        /* The Center Info Card */
+        .center-card {
+            grid-column: 2 / 4;
+            grid-row: 2 / 4;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .center-card h2 {
+            font-size: 20px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 8px 20px;
+            text-align: left;
+            font-size: 15px;
+            margin-top: 20px;
+        }
+
+        .info-label { color: var(--muted); }
+        .info-value { font-weight: 500; }
+
+        /* Element Colors below */
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 15px; height: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="tuvi-wrapper">
+    <div class="header">
+        <h1>Tổng quan lá số của Vũ Công Ngôn (HTML)</h1>
+    </div>
+
+    
+
+    <div class="board">
+        <!-- Tỵ (6) -->
+        <div class="cell" style="grid-row: 1; grid-column: 1;">
+            
+    
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Tỵ</span>
+            <span class="cung-name">Phu thê</span>
+            <span class="cung-tuoi">105–114</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+                    <div>Tử vi (M)</div>
+                
+                    <div>Thất sát (V)</div>
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Phúc đức</div>
+                    
+                        <div>Thiên đức</div>
+                    
+                        <div>Văn tinh</div>
+                    
+                        <div>Thiên trù</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Tiểu hao</div>
+                    
+                        <div>Tuyệt</div>
+                    
+                        <div>Kiếp sát</div>
+                    
+                        <div>Phá toái</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Tỵ</span>
+            <span class="trang-sinh">Tuyệt</span>
+            <span class="tieu-han-num">Mão</span>
+        </div>
+    
+    
+        </div>
+        <!-- Ngọ (7) -->
+        <div class="cell" style="grid-row: 1; grid-column: 2;">
+            
+    
+        
+            <div class="tuan-triet tuan">
+                Tuần
+            </div>
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Ngọ</span>
+            <span class="cung-name">Huynh đệ</span>
+            <span class="cung-tuoi">115–124</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Tướng quân</div>
+                    
+                        <div>Dưỡng</div>
+                    
+                        <div>Văn Khúc (H)</div>
+                    
+                        <div>Tam thai</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Điếu khách</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Ngọ</span>
+            <span class="trang-sinh">Dưỡng</span>
+            <span class="tieu-han-num">Thìn</span>
+        </div>
+    
+    
+        </div>
+        <!-- Mùi (8) -->
+        <div class="cell" style="grid-row: 1; grid-column: 3;">
+            
+    
+        
+            <div class="tuan-triet tuan">
+                Tuần
+            </div>
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Mùi</span>
+            <span class="cung-name">Mệnh</span>
+            <span class="cung-tuoi">5–14</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Tấu thư</div>
+                    
+                        <div>Thiên việt</div>
+                    
+                        <div>Thiên thọ</div>
+                    
+                        <div>Hồng loan</div>
+                    
+                        <div>Thiên quan</div>
+                    
+                        <div>Đường phù</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Trực phù</div>
+                    
+                        <div>Thai</div>
+                    
+                        <div>Quả tú</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Mùi</span>
+            <span class="trang-sinh">Thai</span>
+            <span class="tieu-han-num">Tỵ</span>
+        </div>
+    
+    
+        </div>
+        <!-- Thân (9) -->
+        <div class="cell" style="grid-row: 1; grid-column: 4;">
+            
+    
+        
+            <div class="tuan-triet triet">
+                Triệt
+            </div>
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Thân</span>
+            <span class="cung-name">Phụ mẫu</span>
+            <span class="cung-tuoi">15–24</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Phi liêm</div>
+                    
+                        <div>Tràng sinh</div>
+                    
+                        <div>Văn xương (H)</div>
+                    
+                        <div>Bát tọa</div>
+                    
+                        <div>Thiên y</div>
+                    
+                        <div>Thai phụ</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Thái tuế</div>
+                    
+                        <div>Linh tinh (H)</div>
+                    
+                        <div>Thiên riêu</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Thân</span>
+            <span class="trang-sinh">Tràng sinh</span>
+            <span class="tieu-han-num">Ngọ</span>
+        </div>
+    
+    
+        </div>
+        
+        <!-- Thìn (5) -->
+        <div class="cell" style="grid-row: 2; grid-column: 1;">
+            
+    
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Thìn</span>
+            <span class="cung-name">Tử tức</span>
+            <span class="cung-tuoi">95–104</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+                    <div>Thiên cơ (M)</div>
+                
+                    <div>Thiên lương (M)</div>
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Thanh long</div>
+                    
+                        <div>Mộ</div>
+                    
+                        <div>Phong cáo</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Bạch hổ</div>
+                    
+                        <div>Hỏa tinh (Đ)</div>
+                    
+                        <div>Thiên hình</div>
+                    
+                        <div>Thiên la</div>
+                    
+                        <div>Hoa cái</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Thìn</span>
+            <span class="trang-sinh">Mộ</span>
+            <span class="tieu-han-num">Dần</span>
+        </div>
+    
+    
+        </div>
+
+        <!-- Center Card -->
+        <div class="center-card">
+            <h2>LÁ SỐ TỬ VI</h2>
+            <div class="info-grid">
+                <span class="info-label">Họ tên</span><span class="info-value">Vũ Công Ngôn (HTML)</span>
+                <span class="info-label">Năm sinh</span><span class="info-value">Giáp Thân (Dương Nam)</span>
+                <span class="info-label">Ngày Dương</span><span class="info-value">21/09/2004</span>
+                <span class="info-label">Âm lịch</span><span class="info-value">Ngày 8 tháng 8 năm 2004</span>
+                <span class="info-label">Giờ sinh</span><span class="info-value">Giáp Dần</span>
+                <span class="info-label">Âm/Dương</span><span class="info-value">Âm dương nghịch lý</span>
+                <span class="info-label">Bản mệnh</span><span class="info-value">TRUYỀN TRUNG THỦY</span>
+                <span class="info-label">Cục</span><span class="info-value">Thổ ngũ Cục (Cục khắc Bản Mệnh)</span>
+                <span class="info-label">Mệnh chủ</span><span class="info-value">Tham lang</span>
+                <span class="info-label">Thân chủ</span><span class="info-value">Linh tinh</span>
+            </div>
+        </div>
+
+        <!-- Dậu (10) -->
+        <div class="cell" style="grid-row: 2; grid-column: 4;">
+            
+    
+        
+            <div class="tuan-triet triet">
+                Triệt
+            </div>
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Dậu</span>
+            <span class="cung-name">Phúc đức</span>
+            <span class="cung-tuoi">25–34</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+                    <div>Liêm trinh (H)</div>
+                
+                    <div>Phá quân (H)</div>
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Hỷ thần</div>
+                    
+                        <div>Thiếu dương</div>
+                    
+                        <div>Thiên phúc</div>
+                    
+                        <div>Đào hoa</div>
+                    
+                        <div>Hóa lộc</div>
+                    
+                        <div>Hóa quyền</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Thiên không</div>
+                    
+                        <div>Mộc dục</div>
+                    
+                        <div>Địa không (H)</div>
+                    
+                        <div>Lưu hà</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Dậu</span>
+            <span class="trang-sinh">Mộc dục</span>
+            <span class="tieu-han-num">Mùi</span>
+        </div>
+    
+    
+        </div>
+
+        <!-- Mão (4) -->
+        <div class="cell" style="grid-row: 3; grid-column: 1;">
+            
+    
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Mão</span>
+            <span class="cung-name">Tài Bạch</span>
+            <span class="cung-tuoi">85–94</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+                    <div>Thiên tướng (H)</div>
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Lực sĩ</div>
+                    
+                        <div>Long đức</div>
+                    
+                        <div>Hữu bật</div>
+                    
+                        <div>Thiên tài</div>
+                    
+                        <div>Đẩu quân</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Tử</div>
+                    
+                        <div>Kình dương (H)</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Mão</span>
+            <span class="trang-sinh">Tử</span>
+            <span class="tieu-han-num">Sửu</span>
+        </div>
+    
+    
+        </div>
+        <!-- Tuất (11) -->
+        <div class="cell" style="grid-row: 3; grid-column: 4;">
+            
+    
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Tuất</span>
+            <span class="cung-name">Điền trạch</span>
+            <span class="cung-tuoi">35–44</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Quan đới</div>
+                    
+                        <div>Quốc ấn</div>
+                    
+                        <div>Thiên giải</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Bệnh phù</div>
+                    
+                        <div>Tang môn</div>
+                    
+                        <div>Thiên khốc</div>
+                    
+                        <div>Địa võng</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Tuất</span>
+            <span class="trang-sinh">Quan đới</span>
+            <span class="tieu-han-num">Thân</span>
+        </div>
+    
+    
+        </div>
+
+        <!-- Dần (3) -->
+        <div class="cell" style="grid-row: 4; grid-column: 1;">
+            
+    
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Dần</span>
+            <span class="cung-name">Tật Ách</span>
+            <span class="cung-tuoi">75–84</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+                    <div>Thái Dương (V)</div>
+                
+                    <div>Cự môn (V)</div>
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Lộc tồn</div>
+                    
+                        <div>Bác sỹ</div>
+                    
+                        <div>Phượng các</div>
+                    
+                        <div>Giải thần</div>
+                    
+                        <div>Ân quang</div>
+                    
+                        <div>Địa giải</div>
+                    
+                        <div>Thiên mã (Đ)</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Tuế phá</div>
+                    
+                        <div>Bệnh</div>
+                    
+                        <div>Thiên hư</div>
+                    
+                        <div>Thiên sứ</div>
+                    
+                        <div>Hóa kỵ</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Dần</span>
+            <span class="trang-sinh">Bệnh</span>
+            <span class="tieu-han-num">Tý</span>
+        </div>
+    
+    
+        </div>
+        <!-- Sửu (2) -->
+        <div class="cell" style="grid-row: 4; grid-column: 2;">
+            
+    
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Sửu</span>
+            <span class="cung-name">Thiên di</span>
+            <span class="cung-tuoi">65–74</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+                    <div>Vũ khúc (M)</div>
+                
+                    <div>Tham lang (M)</div>
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Nguyệt đức</div>
+                    
+                        <div>Thiên khôi</div>
+                    
+                        <div>Thiên hỷ</div>
+                    
+                        <div>Hóa khoa</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Quan phù</div>
+                    
+                        <div>Tử phù</div>
+                    
+                        <div>Suy</div>
+                    
+                        <div>Đà la (Đ)</div>
+                    
+                        <div>Địa kiếp (H)</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Sửu</span>
+            <span class="trang-sinh">Suy</span>
+            <span class="tieu-han-num">Hợi</span>
+        </div>
+    
+    
+        </div>
+        <!-- Tý (1) -->
+        <div class="cell" style="grid-row: 4; grid-column: 3;">
+            
+    
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Tý</span>
+            <span class="cung-name">Nô bộc</span>
+            <span class="cung-tuoi">55–64</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+                    <div>Thiên đồng (V)</div>
+                
+                    <div>Thái âm (V)</div>
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Đế vượng</div>
+                    
+                        <div>Long trì</div>
+                    
+                        <div>Thiên quý</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Phục binh</div>
+                    
+                        <div>Quan phù</div>
+                    
+                        <div>Thiên thương</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Tý</span>
+            <span class="trang-sinh">Đế vượng</span>
+            <span class="tieu-han-num">Tuất</span>
+        </div>
+    
+    
+        </div>
+        <!-- Hợi (12) -->
+        <div class="cell" style="grid-row: 4; grid-column: 4;">
+            
+    
+        
+        <div class="cell-header">
+            <span class="cung-can-chi"> Hợi</span>
+            <span class="cung-name">Quan lộc (Thân)</span>
+            <span class="cung-tuoi">45–54</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                
+                    <div>Thiên phủ</div>
+                
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    
+                        <div>Thiếu âm</div>
+                    
+                        <div>Lâm quan</div>
+                    
+                        <div>Tả phù</div>
+                    
+                </div>
+                <div class="bad-stars">
+                    
+                        <div>Đại hao</div>
+                    
+                        <div>Cô thần</div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">Hợi</span>
+            <span class="trang-sinh">Lâm quan</span>
+            <span class="tieu-han-num">Dậu</span>
+        </div>
+    
+    
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lá Số Tử Vi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --border-color: #d1d5db;
+            --main-star-color: #d97706; /* Orange */
+            --good-star-color: #059669; /* Green */
+            --bad-star-color: #dc2626; /* Red */
+            --text-color: #1f2937;
+            --muted: #6b7280;
+            --bg-color: #f9fafb;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: white;
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .tuvi-wrapper {
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin: 0;
+            color: #111827;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 1px;
+            background-color: var(--border-color);
+            border: 1px solid var(--border-color);
+            height: 1200px; /* Force aspect ratio */
+        }
+
+        /* The 12 palaces */
+        .cell {
+            background-color: white;
+            position: relative;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cell-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .cung-can-chi {color: var(--bad-star-color);}
+        .cung-name {font-weight: bold; font-size: 14px;}
+        .cung-tuoi {font-weight: bold;}
+
+        /* Stars */
+        .stars-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .chinh-tinh {
+            color: var(--main-star-color);
+            font-weight: bold;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .minor-stars {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            font-size: 13px;
+            gap: 5px;
+            line-height: 1.3;
+        }
+
+        .good-stars { color: var(--good-star-color); }
+        .bad-stars { color: var(--bad-star-color); }
+
+        .cell-footer {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-top: auto;
+            border-top: 1px dashed #e5e7eb;
+            padding-top: 5px;
+        }
+
+        .tuan-triet {
+            position: absolute;
+            background: black;
+            color: white;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .tuan-triet.tuan { top: -10px; left: 40%; }
+        .tuan-triet.triet { top: -10px; right: 40%; }
+        .tuan-triet.tuan-triet-both { top: -10px; left: 35%; }
+
+        /* The Center Info Card */
+        .center-card {
+            grid-column: 2 / 4;
+            grid-row: 2 / 4;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .center-card h2 {
+            font-size: 20px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 8px 20px;
+            text-align: left;
+            font-size: 15px;
+            margin-top: 20px;
+        }
+
+        .info-label { color: var(--muted); }
+        .info-value { font-weight: 500; }
+
+        /* Element Colors below */
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 15px; height: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="tuvi-wrapper">
+    <div class="header">
+        <h1>Tổng quan lá số của {{ ten }}</h1>
+    </div>
+
+    {% macro render_cung(cung_data) %}
+    {% if cung_data %}
+        {% if cung_data.tuan_triet %}
+            <div class="tuan-triet {% if 'Tuần' in cung_data.tuan_triet and 'Triệt' in cung_data.tuan_triet %}tuan-triet-both{% elif 'Tuần' in cung_data.tuan_triet %}tuan{% else %}triet{% endif %}">
+                {{ cung_data.tuan_triet }}
+            </div>
+        {% endif %}
+        <div class="cell-header">
+            <span class="cung-can-chi">{{ cung_data.cung_can }} {{ cung_data.dia_chi }}</span>
+            <span class="cung-name">{{ cung_data.ten_cung }}{% if cung_data.is_than %} (Thân){% endif %}</span>
+            <span class="cung-tuoi">{{ cung_data.dai_han }}</span>
+        </div>
+        <div class="stars-container">
+            <div class="chinh-tinh">
+                {% for star in cung_data.chinh_tinh %}
+                    <div>{{ star }}</div>
+                {% endfor %}
+            </div>
+            <div class="minor-stars">
+                <div class="good-stars">
+                    {% for star in cung_data.cat_tinh %}
+                        <div>{{ star }}</div>
+                    {% endfor %}
+                </div>
+                <div class="bad-stars">
+                    {% for star in cung_data.sat_tinh %}
+                        <div>{{ star }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="cell-footer">
+            <span class="tieu-han">{{ cung_data.dia_chi }}</span>
+            <span class="trang-sinh">{{ cung_data.trang_sinh }}</span>
+            <span class="tieu-han-num">{{ cung_data.tieu_han }}</span>
+        </div>
+    {% endif %}
+    {% endmacro %}
+
+    <div class="board">
+        <!-- Tỵ (6) -->
+        <div class="cell" style="grid-row: 1; grid-column: 1;">
+            {{ render_cung(laso['Tỵ']) }}
+        </div>
+        <!-- Ngọ (7) -->
+        <div class="cell" style="grid-row: 1; grid-column: 2;">
+            {{ render_cung(laso['Ngọ']) }}
+        </div>
+        <!-- Mùi (8) -->
+        <div class="cell" style="grid-row: 1; grid-column: 3;">
+            {{ render_cung(laso['Mùi']) }}
+        </div>
+        <!-- Thân (9) -->
+        <div class="cell" style="grid-row: 1; grid-column: 4;">
+            {{ render_cung(laso['Thân']) }}
+        </div>
+        
+        <!-- Thìn (5) -->
+        <div class="cell" style="grid-row: 2; grid-column: 1;">
+            {{ render_cung(laso['Thìn']) }}
+        </div>
+
+        <!-- Center Card -->
+        <div class="center-card">
+            <h2>LÁ SỐ TỬ VI</h2>
+            <div class="info-grid">
+                <span class="info-label">Họ tên</span><span class="info-value">{{ ten }}</span>
+                <span class="info-label">Năm sinh</span><span class="info-value">{{ tu_tru.nam }} ({{ am_duong_nam_sinh }} Nam)</span>
+                <span class="info-label">Ngày Dương</span><span class="info-value">{{ ngay_duong_lich }}</span>
+                <span class="info-label">Âm lịch</span><span class="info-value">{{ am_lich }}</span>
+                <span class="info-label">Giờ sinh</span><span class="info-value">{{ tu_tru.gio }}</span>
+                <span class="info-label">Âm/Dương</span><span class="info-value">{{ am_duong_menh }}</span>
+                <span class="info-label">Bản mệnh</span><span class="info-value">{{ ban_menh }}</span>
+                <span class="info-label">Cục</span><span class="info-value">{{ cuc }} ({{ sinh_khac_cuc_menh }})</span>
+                <span class="info-label">Mệnh chủ</span><span class="info-value">{{ menh_chu }}</span>
+                <span class="info-label">Thân chủ</span><span class="info-value">{{ than_chu }}</span>
+            </div>
+        </div>
+
+        <!-- Dậu (10) -->
+        <div class="cell" style="grid-row: 2; grid-column: 4;">
+            {{ render_cung(laso['Dậu']) }}
+        </div>
+
+        <!-- Mão (4) -->
+        <div class="cell" style="grid-row: 3; grid-column: 1;">
+            {{ render_cung(laso['Mão']) }}
+        </div>
+        <!-- Tuất (11) -->
+        <div class="cell" style="grid-row: 3; grid-column: 4;">
+            {{ render_cung(laso['Tuất']) }}
+        </div>
+
+        <!-- Dần (3) -->
+        <div class="cell" style="grid-row: 4; grid-column: 1;">
+            {{ render_cung(laso['Dần']) }}
+        </div>
+        <!-- Sửu (2) -->
+        <div class="cell" style="grid-row: 4; grid-column: 2;">
+            {{ render_cung(laso['Sửu']) }}
+        </div>
+        <!-- Tý (1) -->
+        <div class="cell" style="grid-row: 4; grid-column: 3;">
+            {{ render_cung(laso['Tý']) }}
+        </div>
+        <!-- Hợi (12) -->
+        <div class="cell" style="grid-row: 4; grid-column: 4;">
+            {{ render_cung(laso['Hợi']) }}
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
